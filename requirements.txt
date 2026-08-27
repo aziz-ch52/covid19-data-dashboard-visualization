@@ -1,0 +1,6 @@
+# Data manipulation and aggregation
+pandas>=2.0.0
+numpy>=1.24.0
+
+# Excel file read/write engine for Pandas
+openpyxl>=3.1.0

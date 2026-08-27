@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://aziz-ch52.github.io/covid19-dashboard-visualization/sitemap.xml

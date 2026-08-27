@@ -1,0 +1,28 @@
+{
+  "name": "covid19-state-metrics-engine",
+  "version": "1.0.0",
+  "description": "Client-side pandemic data visualization dashboard with local SheetJS parsing and schema validation.",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx http-server . -p 3000 -o index.html",
+    "dev": "npx lite-server",
+    "python:clean": "python scripts/data_cleaner.py --input data/raw/raw_pandemic_source.csv --output data/processed/Covid19_Cleaned_Dataset.xlsx",
+    "python:metrics": "python scripts/metrics_generator.py --input data/processed/Covid19_Cleaned_Dataset.xlsx --outdir public/data/",
+    "build:data": "npm run python:clean && npm run python:metrics"
+  },
+  "keywords": [
+    "covid19",
+    "data-visualization",
+    "sheetjs",
+    "client-side",
+    "dashboard"
+  ],
+  "author": "Aziz Chharchhodawala",
+  "license": "MIT",
+  "dependencies": {
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
+  }
+}

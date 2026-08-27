@@ -1,0 +1,711 @@
+/* ============================================================
+     DESIGN TOKENS
+     One variable set per theme. Every surface, line and metric
+     colour in the app resolves through these, so the dark/light
+     switch is a single class flip on <html>.
+     ============================================================ */
+:root {
+  --surface: #ffffff;
+  --surface-2: #f5f8fc;
+  --surface-3: #eaeff7;
+  --line: #dbe3ee;
+  --line-soft: #e9eef6;
+  --text: #0d1727;
+  --text-mid: #3d4f6b;
+  --text-muted: #64748b;
+  --accent: #0e7490;
+  --accent-2: #06b6d4;
+  --accent-ink: #ffffff;
+  --grid: #e6ebf3;
+  --c-cases: #0284c7;
+  --c-deaths: #e11d48;
+  --c-recov: #059669;
+  --c-active: #d97706;
+  --c-vax: #7c3aed;
+  --shadow-sm: 0 1px 2px rgba(13, 26, 45, 0.05);
+  --shadow-md: 0 1px 2px rgba(13, 26, 45, 0.05), 0 10px 26px -14px rgba(13, 26, 45, 0.28);
+  --rail: rgba(14, 116, 144, 0.16);
+}
+
+html.dark {
+  --surface: #0f1a2b;
+  --surface-2: #0a1220;
+  --surface-3: #16243b;
+  --line: #22344f;
+  --line-soft: #1b2a42;
+  --text: #e8effa;
+  --text-mid: #b6c6dd;
+  --text-muted: #8fa3bf;
+  --accent: #22d3ee;
+  --accent-2: #06b6d4;
+  --accent-ink: #04222c;
+  --grid: #1d2c44;
+  --c-cases: #38bdf8;
+  --c-deaths: #fb7185;
+  --c-recov: #34d399;
+  --c-active: #fbbf24;
+  --c-vax: #a78bfa;
+  --shadow-sm: 0 1px 0 rgba(255, 255, 255, 0.03);
+  --shadow-md: 0 1px 0 rgba(255, 255, 255, 0.03), 0 22px 44px -28px rgba(0, 0, 0, 0.9);
+  --rail: rgba(34, 211, 238, 0.18);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--surface-2);
+  color: var(--text);
+  font-family: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
+}
+
+/* Sticky header clearance for anchor navigation */
+section[id] {
+  scroll-margin-top: 104px;
+}
+
+/* ---------- Core surfaces ---------- */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-md);
+}
+
+.panel-flat {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+
+.inset {
+  background: var(--surface-2);
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+}
+
+.hairline {
+  border-color: var(--line);
+}
+
+.t-muted {
+  color: var(--text-muted);
+}
+
+.t-mid {
+  color: var(--text-mid);
+}
+
+/* ---------- Typography signature ---------- */
+.eyebrow {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.68rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.55rem;
+}
+
+.eyebrow .idx {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+.eyebrow::after {
+  content: '';
+  height: 1px;
+  width: 2.25rem;
+  background: linear-gradient(90deg, var(--line), transparent);
+}
+
+.sec-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.figure {
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.03em;
+  line-height: 1.05;
+}
+
+.ledger {
+  border-bottom: 1px dotted var(--line);
+  padding-bottom: 0.45rem;
+}
+
+/* ---------- Sticky header + scroll rail ---------- */
+.app-header {
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  border-bottom: 1px solid var(--line);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .app-header {
+    background: var(--surface);
+  }
+}
+
+#scrollRail {
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-2), var(--accent));
+  width: 0%;
+  transition: width 0.12s linear;
+}
+
+.navlink {
+  position: relative;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  padding: 0.3rem 0;
+  transition: color 0.18s ease;
+  white-space: nowrap;
+}
+
+.navlink:hover {
+  color: var(--text);
+}
+
+.navlink::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: -3px;
+  height: 2px;
+  width: 0%;
+  background: var(--accent);
+  transition: width 0.22s ease;
+}
+
+.navlink:hover::after,
+.navlink.active::after {
+  width: 100%;
+}
+
+.navlink.active {
+  color: var(--text);
+}
+
+/* ---------- Controls ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 0.6rem 1rem;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  transition:
+    transform 0.12s ease,
+    border-color 0.18s ease,
+    background-color 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+  box-shadow: 0 8px 20px -12px var(--accent);
+}
+
+.btn-primary:hover {
+  filter: brightness(1.07);
+}
+
+.btn-ghost {
+  background: transparent;
+}
+
+.btn-xs {
+  padding: 0.35rem 0.6rem;
+  font-size: 0.7rem;
+  border-radius: 7px;
+}
+
+.select,
+.input {
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  color: var(--text);
+  border-radius: 9px;
+  padding: 0.55rem 0.7rem;
+  font-size: 0.82rem;
+  font-weight: 500;
+  transition:
+    border-color 0.18s ease,
+    box-shadow 0.18s ease;
+  appearance: none;
+}
+
+.select {
+  padding-right: 2rem;
+}
+
+.select:focus,
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--rail);
+}
+
+.select-wrap {
+  position: relative;
+}
+
+.select-wrap::after {
+  content: '\f107';
+  font-family: 'Font Awesome 6 Free';
+  font-weight: 900;
+  position: absolute;
+  right: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Theme switch */
+.switch {
+  width: 46px;
+  height: 24px;
+  border-radius: 999px;
+  background: var(--surface-3);
+  border: 1px solid var(--line);
+  position: relative;
+  cursor: pointer;
+  flex: none;
+  transition: background-color 0.25s ease;
+}
+
+.switch .knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 999px;
+  background: var(--accent);
+  display: grid;
+  place-items: center;
+  font-size: 0.55rem;
+  color: var(--accent-ink);
+  transition: transform 0.28s cubic-bezier(0.4, 1.4, 0.5, 1);
+}
+
+html.dark .switch .knob {
+  transform: translateX(22px);
+}
+
+/* ---------- KPI cards ---------- */
+.kpi {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  padding: 1rem 1.05rem 1.05rem;
+  overflow: hidden;
+  transition:
+    transform 0.2s ease,
+    border-color 0.2s ease,
+    box-shadow 0.2s ease;
+}
+
+.kpi::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: var(--kpi-accent, var(--accent));
+}
+
+.kpi:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-md);
+  border-color: var(--kpi-accent, var(--accent));
+}
+
+.kpi-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  font-size: 0.8rem;
+  color: var(--kpi-accent, var(--accent));
+  background: color-mix(in srgb, var(--kpi-accent, var(--accent)) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--kpi-accent, var(--accent)) 30%, transparent);
+}
+
+@supports not (background: color-mix(in srgb, red 50%, blue)) {
+  .kpi-icon {
+    background: var(--surface-3);
+    border-color: var(--line);
+  }
+}
+
+/* ---------- Upload zone ---------- */
+#dropZone {
+  border: 1.5px dashed var(--line);
+  border-radius: 13px;
+  background: var(--surface-2);
+  transition:
+    border-color 0.2s ease,
+    background-color 0.2s ease,
+    transform 0.2s ease;
+  cursor: pointer;
+}
+
+#dropZone:hover {
+  border-color: var(--accent);
+}
+
+#dropZone.dragging {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, var(--surface-2));
+  transform: scale(1.005);
+}
+
+/* ---------- Chart shells ---------- */
+.chart-box {
+  position: relative;
+  width: 100%;
+}
+
+.h-chart {
+  height: 320px;
+}
+
+.h-chart-tall {
+  height: 400px;
+}
+
+.h-chart-mini {
+  height: 168px;
+}
+
+/* ---------- Data table ---------- */
+.grid-table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  font-size: 0.82rem;
+}
+
+.grid-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: var(--surface-3);
+  color: var(--text-mid);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-weight: 500;
+  padding: 0.7rem 0.75rem;
+  text-align: right;
+  white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+  cursor: pointer;
+  user-select: none;
+}
+
+.grid-table thead th:first-child,
+.grid-table tbody td:first-child {
+  text-align: left;
+}
+
+.grid-table thead th:hover {
+  color: var(--accent);
+}
+
+.grid-table thead th .arrow {
+  opacity: 0.3;
+  margin-left: 0.3rem;
+  font-size: 0.6rem;
+}
+
+.grid-table thead th.sorted .arrow {
+  opacity: 1;
+  color: var(--accent);
+}
+
+.grid-table tbody td {
+  padding: 0.62rem 0.75rem;
+  text-align: right;
+  border-bottom: 1px solid var(--line-soft);
+  font-family: 'JetBrains Mono', monospace;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-mid);
+  white-space: nowrap;
+}
+
+.grid-table tbody td:first-child {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.grid-table tbody tr:hover td {
+  background: var(--surface-2);
+}
+
+.pill {
+  display: inline-block;
+  padding: 0.12rem 0.45rem;
+  border-radius: 5px;
+  font-size: 0.7rem;
+  font-weight: 600;
+}
+
+.scroll-x {
+  overflow-x: auto;
+}
+
+.scroll-y {
+  overflow-y: auto;
+}
+
+.scroll-x::-webkit-scrollbar,
+.scroll-y::-webkit-scrollbar {
+  height: 9px;
+  width: 9px;
+}
+
+.scroll-x::-webkit-scrollbar-track,
+.scroll-y::-webkit-scrollbar-track {
+  background: var(--surface-2);
+}
+
+.scroll-x::-webkit-scrollbar-thumb,
+.scroll-y::-webkit-scrollbar-thumb {
+  background: var(--line);
+  border-radius: 99px;
+}
+
+.scroll-x::-webkit-scrollbar-thumb:hover,
+.scroll-y::-webkit-scrollbar-thumb:hover {
+  background: var(--accent);
+}
+
+/* ---------- Insight cards ---------- */
+.insight {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--ins-accent, var(--accent));
+  border-radius: 10px;
+  padding: 0.95rem 1rem;
+  transition:
+    transform 0.18s ease,
+    box-shadow 0.18s ease;
+}
+
+.insight:hover {
+  transform: translateX(3px);
+  box-shadow: var(--shadow-md);
+}
+
+/* ---------- Toasts ---------- */
+#toastHost {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 90;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-width: min(92vw, 22rem);
+}
+
+.toast {
+  display: flex;
+  gap: 0.6rem;
+  align-items: flex-start;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  box-shadow: var(--shadow-md);
+  font-size: 0.8rem;
+  animation: toastIn 0.28s cubic-bezier(0.2, 1.2, 0.4, 1);
+}
+
+.toast.out {
+  animation: toastOut 0.22s ease forwards;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.98);
+  }
+}
+
+@keyframes toastOut {
+  to {
+    opacity: 0;
+    transform: translateX(14px);
+  }
+}
+
+/* ---------- Reveal on scroll ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+.reveal.in {
+  opacity: 1;
+  transform: none;
+  transition:
+    opacity 0.5s ease,
+    transform 0.5s cubic-bezier(0.2, 0.8, 0.3, 1);
+}
+
+/* ---------- Accordion ---------- */
+.acc-panel {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.35s ease;
+}
+
+.acc-panel.open {
+  max-height: 1400px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+
+  .reveal {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media print {
+
+  .app-header,
+  #toastHost,
+  .no-print {
+    display: none !important;
+  }
+
+  .panel,
+  .kpi {
+    box-shadow: none;
+    break-inside: avoid;
+  }
+}
+
+/* ============================================================
+   RESPONSIVE PATCHES
+   Fixes for mobile overflow, chart scaling, and table containment
+   ============================================================ */
+
+/* 1. Kill all accidental horizontal scrolling at the root */
+html,
+body {
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 100vw;
+}
+
+/* 2. Contain the main wrapper so it doesn't push the viewport */
+main {
+  overflow: hidden;
+  max-width: 100%;
+}
+
+/* 3. Ensure tables scroll smoothly horizontally on mobile without breaking the layout */
+.scroll-x {
+  max-width: 100vw;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  /* Momentum scrolling on iOS */
+  /* Hide scrollbar visually on mobile for cleaner UI, but keep functionality */
+  scrollbar-width: none;
+}
+
+.scroll-x::-webkit-scrollbar {
+  display: none;
+}
+
+/* 4. Force Chart.js canvases to stay inside their boxes */
+.chart-box {
+  width: 100%;
+  max-width: 100%;
+}
+
+canvas {
+  max-width: 100%;
+}
+
+/* 5. Mobile-specific targeted adjustments (below 640px) */
+@media (max-width: 639px) {
+
+  /* Compress chart heights to save vertical space on phones */
+  .h-chart,
+  .h-chart-tall {
+    height: 260px !important;
+  }
+
+  /* Shrink massive KPI numbers so they don't break flexboxes */
+  .kpi .figure {
+    font-size: 1.5rem !important;
+  }
+
+  /* Make sure the Highcharts map container shrinks properly */
+  #chartMap {
+    height: 350px !important;
+  }
+
+  /* Tighter padding on panels to maximize screen real estate */
+  .panel,
+  .panel-flat {
+    padding: 1rem !important;
+  }
+}

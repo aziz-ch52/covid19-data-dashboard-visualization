@@ -1,0 +1,1441 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <!-- For SEO -->
+    <title>COVID-19 Data Visualization Dashboard | India (2020–2022)</title>
+    <meta
+      name="description"
+      content="Interactive state-wise COVID-19 analytical dashboard for India (2020-2022). Built with JS, Chart.js, and a Python ETL pipeline." />
+    <meta name="author" content="Aziz Taheribhai Chharchhodawala" />
+    <link rel="canonical" href="https://aziz-ch52.github.io/covid19-dashboard-visualization/" />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:type" content="website" />
+    <meta
+      property="og:url"
+      content="https://aziz-ch52.github.io/covid19-data-dashboard-visualization/" />
+    <meta property="og:title" content="COVID-19 Data Visualization Dashboard" />
+    <meta
+      property="og:description"
+      content="State-wise COVID-19 analytical dashboard for India (2020-2022) with automated insights and visualizations." />
+    <meta
+      property="og:image"
+      content="https://aziz-ch52.github.io/covid19-data-dashboard-visualization/public/og-image.jpg" />
+
+    <!-- ============================================================
+     CDN DEPENDENCIES
+     Tailwind CSS ...... utility-first styling + dark mode engine
+     FontAwesome ....... iconography
+     Chart.js .......... all canvas visualizations
+     Highmaps .......... Geographic SVG Choropleth Map Engine
+     SheetJS (xlsx) .... in-browser CSV / XLSX / XLS parsing
+     ============================================================ -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://code.highcharts.com/maps/highmaps.js"></script>
+    <script src="https://code.highcharts.com/mapdata/countries/in/custom/in-all-disputed.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx/dist/xlsx.full.min.js"></script>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      rel="stylesheet" />
+
+    <!-- Tailwind runtime configuration: class-based dark mode + project type scale -->
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              display: ['"Space Grotesk"', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+              mono: ['"JetBrains Mono"', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+            },
+            screens: { xs: '480px' },
+          },
+        },
+      };
+    </script>
+
+    <!-- Link External CSS -->
+    <link rel="stylesheet" href="src/css/style.css" />
+  </head>
+
+  <body class="min-h-screen font-sans antialiased">
+    <!-- ================================================================
+     HEADER — sticky masthead, scroll-progress rail, theme switch and
+     smooth-scroll section navigation.
+     ================================================================ -->
+    <header class="app-header sticky top-0 z-50">
+      <div id="scrollRail" role="presentation"></div>
+      <div class="max-w-[1600px] mx-auto px-4 sm:px-6">
+        <div class="flex items-center justify-between gap-4 py-3">
+          <!-- Identity -->
+          <div class="flex items-center gap-3 min-w-0">
+            <div
+              class="relative flex-none w-10 h-10 rounded-xl grid place-items-center"
+              style="background: var(--surface-3); border: 1px solid var(--line)">
+              <i class="fa-solid fa-virus-covid text-base" style="color: var(--accent)"></i>
+              <span
+                class="absolute -bottom-1 -right-1 w-3.5 h-3.5 rounded-full grid place-items-center"
+                style="background: var(--surface); border: 1px solid var(--line)">
+                <i
+                  class="fa-solid fa-chart-line"
+                  style="font-size: 0.42rem; color: var(--accent)"></i>
+              </span>
+            </div>
+            <div class="min-w-0">
+              <h1 class="sec-title text-[.95rem] sm:text-[1.08rem] leading-tight truncate">
+                COVID-19 Data Visualization Dashboard
+              </h1>
+              <p class="hidden sm:block text-[.7rem] t-muted leading-tight truncate">
+                State Pandemic & Vaccine Data Engine (2020–22)
+              </p>
+            </div>
+          </div>
+
+          <!-- Desktop navigation -->
+          <nav class="hidden xl:flex items-center gap-6" aria-label="Dashboard sections">
+            <a href="#upload" class="navlink" data-nav>Upload</a>
+            <a href="#overview" class="navlink" data-nav>Overview</a>
+            <a href="#map-view" class="navlink" data-nav>Map View</a>
+            <a href="#trends" class="navlink" data-nav>Trends</a>
+            <a href="#deep-dive" class="navlink" data-nav>State Deep-Dive</a>
+            <a href="#comparison" class="navlink" data-nav>Comparison</a>
+            <a href="#data-grid" class="navlink" data-nav>Data Grid</a>
+            <a href="#insights" class="navlink" data-nav>Insights</a>
+          </nav>
+
+          <!-- Theme + mobile trigger -->
+          <div class="flex items-center gap-2 sm:gap-3 flex-none">
+            <div class="hidden sm:flex items-center gap-2">
+              <span
+                id="themeLabel"
+                class="text-[.68rem] font-mono uppercase tracking-widest t-muted"
+                >Dark</span
+              >
+              <button
+                id="themeToggle"
+                class="switch"
+                role="switch"
+                aria-checked="true"
+                aria-label="Toggle dark and light theme">
+                <span class="knob"><i id="themeIcon" class="fa-solid fa-moon"></i></span>
+              </button>
+            </div>
+            <button
+              id="themeToggleMobile"
+              class="sm:hidden btn btn-xs"
+              aria-label="Toggle dark and light theme">
+              <i class="fa-solid fa-circle-half-stroke"></i>
+            </button>
+            <button
+              id="mobileMenuBtn"
+              class="xl:hidden btn btn-xs"
+              aria-expanded="false"
+              aria-controls="mobileMenu"
+              aria-label="Open section menu">
+              <i class="fa-solid fa-bars"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Mobile navigation -->
+        <nav id="mobileMenu" class="xl:hidden hidden pb-3" aria-label="Dashboard sections, mobile">
+          <div class="grid grid-cols-2 xs:grid-cols-3 gap-1.5">
+            <a href="#upload" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-file-arrow-up t-muted"></i>Upload</a
+            >
+            <a href="#overview" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-gauge-high t-muted"></i>Overview</a
+            >
+            <a href="#map-view" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-map-location-dot t-muted"></i>Map</a
+            >
+            <a href="#trends" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-chart-column t-muted"></i>Trends</a
+            >
+            <a href="#deep-dive" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-magnifying-glass-chart t-muted"></i>Deep-Dive</a
+            >
+            <a href="#comparison" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-code-compare t-muted"></i>Compare</a
+            >
+            <a href="#data-grid" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-table-list t-muted"></i>Data Grid</a
+            >
+            <a href="#insights" class="btn btn-xs justify-start" data-mobile-nav
+              ><i class="fa-solid fa-lightbulb t-muted"></i>Insights</a
+            >
+          </div>
+        </nav>
+      </div>
+    </header>
+
+    <main class="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-10 sm:space-y-14">
+      <!-- ================================================================
+       01 · DATASET INGESTION & VALIDATION ENGINE
+       Drag-and-drop or browse a .csv/.xlsx/.xls file. SheetJS parses it
+       in the browser; the validation engine reports on it before a single
+       chart is drawn.
+       ================================================================ -->
+      <section id="upload" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">01</span>Dataset ingestion</span>
+            <h2 class="sec-title text-xl sm:text-2xl">
+              Load your dataset, or analyse the embedded 2020–2022 baseline
+            </h2>
+          </div>
+          <p class="text-[.78rem] t-muted max-w-md leading-relaxed">
+            Runs entirely in-browser using SheetJS. Files are parsed and validated locally against
+            the schema before rendering—no server uploads or network calls.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-5 gap-4">
+          <!-- Drop zone + actions -->
+          <div class="lg:col-span-3 panel p-4 sm:p-5">
+            <div
+              id="dropZone"
+              tabindex="0"
+              role="button"
+              aria-label="Drop a CSV or Excel file here, or press Enter to browse for a file"
+              class="px-5 py-8 sm:py-10 text-center">
+              <div
+                class="w-12 h-12 mx-auto mb-3 rounded-xl grid place-items-center"
+                style="background: var(--surface); border: 1px solid var(--line)">
+                <i class="fa-solid fa-file-arrow-up text-lg" style="color: var(--accent)"></i>
+              </div>
+              <p class="font-display font-semibold text-[.95rem]">
+                Drop a CSV or Excel file to analyse
+              </p>
+              <p class="text-[.76rem] t-muted mt-1">
+                Supports <span class="font-mono">.csv</span>,
+                <span class="font-mono">.xlsx</span> and <span class="font-mono">.xls</span> — first
+                sheet is read
+              </p>
+              <p class="text-[.7rem] t-muted mt-3 font-mono">
+                State · Year · Cases · Deaths · Recovered · Vaccinated
+              </p>
+              <input id="fileInput" type="file" accept=".csv,.xlsx,.xls" class="hidden" />
+            </div>
+
+            <div class="flex flex-wrap gap-2 mt-4">
+              <button id="browseBtn" class="btn btn-primary">
+                <i class="fa-solid fa-folder-open"></i>Choose file
+              </button>
+              <button id="loadDemoBtn" class="btn">
+                <i class="fa-solid fa-database"></i>Load demo dataset
+              </button>
+              <button id="resetDefaultBtn" class="btn">
+                <i class="fa-solid fa-rotate-left"></i>Reset to default
+              </button>
+              <button id="downloadTemplateBtn" class="btn btn-ghost">
+                <i class="fa-solid fa-file-csv"></i>Download template
+              </button>
+            </div>
+          </div>
+
+          <!-- Data status banner -->
+          <aside class="lg:col-span-2 panel p-4 sm:p-5 flex flex-col">
+            <div class="flex items-start gap-3">
+              <div
+                id="statusIcon"
+                class="w-9 h-9 rounded-lg grid place-items-center flex-none"
+                style="
+                  background: var(--surface-3);
+                  border: 1px solid var(--line);
+                  color: var(--c-recov);
+                ">
+                <i class="fa-solid fa-circle-check"></i>
+              </div>
+              <div class="min-w-0">
+                <h3 id="statusTitle" class="font-display font-semibold text-[.92rem]">
+                  Dataset ready
+                </h3>
+                <p id="statusMessage" class="text-[.76rem] t-muted leading-snug mt-0.5">
+                  Initialising the embedded baseline dataset…
+                </p>
+              </div>
+            </div>
+
+            <dl class="grid grid-cols-2 gap-2 mt-4">
+              <div class="inset px-3 py-2.5">
+                <dt class="text-[.62rem] font-mono uppercase tracking-widest t-muted">Records</dt>
+                <dd id="statRecords" class="figure text-lg font-bold mt-0.5">0</dd>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <dt class="text-[.62rem] font-mono uppercase tracking-widest t-muted">
+                  Unique states
+                </dt>
+                <dd id="statStates" class="figure text-lg font-bold mt-0.5">0</dd>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <dt class="text-[.62rem] font-mono uppercase tracking-widest t-muted">
+                  Year range
+                </dt>
+                <dd id="statYears" class="figure text-lg font-bold mt-0.5">—</dd>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <dt class="text-[.62rem] font-mono uppercase tracking-widest t-muted">
+                  Validation
+                </dt>
+                <dd id="statValidation" class="text-lg font-bold mt-0.5 font-display">—</dd>
+              </div>
+            </dl>
+
+            <div class="mt-3 flex items-center justify-between gap-2 text-[.7rem] t-muted">
+              <span class="truncate"
+                ><i class="fa-solid fa-tag mr-1.5"></i>Source:
+                <span id="statSource" class="font-mono">embedded</span></span
+              >
+              <button id="validationToggle" class="btn btn-xs btn-ghost hidden">
+                <i class="fa-solid fa-triangle-exclamation"></i
+                ><span id="validationCount">0</span> issues
+              </button>
+            </div>
+
+            <div id="validationWrap" class="acc-panel mt-2">
+              <ul
+                id="validationList"
+                class="inset p-3 space-y-1.5 text-[.72rem] font-mono scroll-y"
+                style="max-height: 190px"></ul>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <!-- ================================================================
+       02 · GLOBAL FILTERS + KPI SUMMARY
+       Every downstream module (KPIs, all six charts, deep-dive,
+       comparison, grid, insights) reads from the same filtered slice.
+       ================================================================ -->
+      <section id="overview" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">02</span>Aggregate overview</span>
+            <h2 class="sec-title text-xl sm:text-2xl">
+              Headline metrics for the current selection
+            </h2>
+          </div>
+          <p id="filterSummary" class="text-[.72rem] font-mono t-muted">—</p>
+        </div>
+
+        <!-- Global filter bar -->
+        <div class="panel p-3 sm:p-4 mb-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
+            <div>
+              <label
+                for="filterYear"
+                class="block text-[.62rem] font-mono uppercase tracking-widest t-muted mb-1.5">
+                <i class="fa-regular fa-calendar mr-1"></i>Year
+              </label>
+              <div class="select-wrap">
+                <select id="filterYear" class="select">
+                  <option value="all">All years</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label
+                for="filterState"
+                class="block text-[.62rem] font-mono uppercase tracking-widest t-muted mb-1.5">
+                <i class="fa-solid fa-location-dot mr-1"></i>State
+              </label>
+              <div class="select-wrap">
+                <select id="filterState" class="select">
+                  <option value="all">All states</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label
+                for="filterMetric"
+                class="block text-[.62rem] font-mono uppercase tracking-widest t-muted mb-1.5">
+                <i class="fa-solid fa-ruler-combined mr-1"></i>Ranking metric
+              </label>
+              <div class="select-wrap">
+                <select id="filterMetric" class="select">
+                  <option value="cases">Cases</option>
+                  <option value="deaths">Deaths</option>
+                  <option value="recovered">Recoveries</option>
+                  <option value="vaccinated">Vaccinations</option>
+                </select>
+              </div>
+            </div>
+            <div class="flex gap-2">
+              <button id="resetFiltersBtn" class="btn flex-1">
+                <i class="fa-solid fa-filter-circle-xmark"></i>Reset filters
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- KPI cards: five aggregate metrics -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+          <article class="kpi" style="--kpi-accent: var(--c-cases)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted"
+                >Confirmed cases</span
+              >
+              <span class="kpi-icon"><i class="fa-solid fa-virus-covid"></i></span>
+            </div>
+            <p id="kpiCases" class="figure text-2xl sm:text-[1.7rem] font-bold mt-3 ledger">0</p>
+            <p id="kpiCasesSub" class="text-[.7rem] t-muted mt-2">—</p>
+          </article>
+
+          <article class="kpi" style="--kpi-accent: var(--c-active)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted"
+                >Active cases</span
+              >
+              <span class="kpi-icon"><i class="fa-solid fa-heart-pulse"></i></span>
+            </div>
+            <p id="kpiActive" class="figure text-2xl sm:text-[1.7rem] font-bold mt-3 ledger">0</p>
+            <div class="mt-2">
+              <div
+                class="h-[3px] rounded-full overflow-hidden"
+                style="background: var(--surface-3)">
+                <div
+                  id="kpiActiveBar"
+                  class="h-full rounded-full"
+                  style="width: 0%; background: var(--c-active); transition: width 0.8s ease"></div>
+              </div>
+              <p id="kpiActiveSub" class="text-[.7rem] t-muted mt-1.5">—</p>
+            </div>
+          </article>
+
+          <article class="kpi" style="--kpi-accent: var(--c-deaths)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted">Deaths</span>
+              <span class="kpi-icon"><i class="fa-solid fa-heart-crack"></i></span>
+            </div>
+            <div class="flex items-end justify-between gap-2 mt-3 ledger">
+              <p id="kpiDeaths" class="figure text-2xl sm:text-[1.7rem] font-bold">0</p>
+              <span
+                id="kpiDeathRate"
+                class="pill figure"
+                style="
+                  background: color-mix(in srgb, var(--c-deaths) 14%, transparent);
+                  color: var(--c-deaths);
+                "
+                >0.00%</span
+              >
+            </div>
+            <div class="mt-2">
+              <div
+                class="h-[3px] rounded-full overflow-hidden"
+                style="background: var(--surface-3)">
+                <div
+                  id="kpiDeathBar"
+                  class="h-full rounded-full"
+                  style="width: 0%; background: var(--c-deaths); transition: width 0.8s ease"></div>
+              </div>
+              <p class="text-[.7rem] t-muted mt-1.5">Case fatality rate · deaths ÷ cases</p>
+            </div>
+          </article>
+
+          <article class="kpi" style="--kpi-accent: var(--c-recov)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted"
+                >Recovered</span
+              >
+              <span class="kpi-icon"><i class="fa-solid fa-shield-heart"></i></span>
+            </div>
+            <div class="flex items-end justify-between gap-2 mt-3 ledger">
+              <p id="kpiRecovered" class="figure text-2xl sm:text-[1.7rem] font-bold">0</p>
+              <span
+                id="kpiRecoveryRate"
+                class="pill figure"
+                style="
+                  background: color-mix(in srgb, var(--c-recov) 14%, transparent);
+                  color: var(--c-recov);
+                "
+                >0.00%</span
+              >
+            </div>
+            <div class="mt-2">
+              <div
+                class="h-[3px] rounded-full overflow-hidden"
+                style="background: var(--surface-3)">
+                <div
+                  id="kpiRecovBar"
+                  class="h-full rounded-full"
+                  style="width: 0%; background: var(--c-recov); transition: width 0.8s ease"></div>
+              </div>
+              <p class="text-[.7rem] t-muted mt-1.5">Recovery rate · recovered ÷ cases</p>
+            </div>
+          </article>
+
+          <article class="kpi" style="--kpi-accent: var(--c-vax)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted"
+                >Doses administered</span
+              >
+              <span class="kpi-icon"><i class="fa-solid fa-syringe"></i></span>
+            </div>
+            <p id="kpiVaccinated" class="figure text-2xl sm:text-[1.7rem] font-bold mt-3 ledger">
+              0
+            </p>
+            <p id="kpiVaccinatedSub" class="text-[.7rem] t-muted mt-2">—</p>
+          </article>
+        </div>
+
+        <!-- KPI cards: two derived indicators -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <article class="kpi" style="--kpi-accent: var(--accent)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted"
+                >Peak case year</span
+              >
+              <span class="kpi-icon"><i class="fa-solid fa-arrow-trend-up"></i></span>
+            </div>
+            <div class="flex flex-wrap items-end gap-x-4 gap-y-1 mt-3">
+              <p id="kpiPeakYear" class="figure text-3xl font-bold">—</p>
+              <p id="kpiPeakYearCases" class="text-[.78rem] t-mid font-mono pb-1">—</p>
+            </div>
+            <p id="kpiPeakYearSub" class="text-[.7rem] t-muted mt-2">—</p>
+          </article>
+
+          <article class="kpi" style="--kpi-accent: var(--accent)">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-[.62rem] font-mono uppercase tracking-widest t-muted"
+                >Most affected state</span
+              >
+              <span class="kpi-icon"><i class="fa-solid fa-map-location-dot"></i></span>
+            </div>
+            <div class="flex flex-wrap items-end gap-x-4 gap-y-1 mt-3">
+              <p id="kpiTopState" class="sec-title text-2xl sm:text-3xl font-bold">—</p>
+              <p id="kpiTopStateCases" class="text-[.78rem] t-mid font-mono pb-1">—</p>
+            </div>
+            <p id="kpiTopStateSub" class="text-[.7rem] t-muted mt-2">—</p>
+          </article>
+        </div>
+      </section>
+
+      <!-- ================================================================
+       03 · CHOROPLETH MAP (GEOGRAPHIC DISTRIBUTION)
+       ================================================================ -->
+      <section id="map-view" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">03</span>Geographic Distribution</span>
+            <h2 class="sec-title text-xl sm:text-2xl">Interactive Choropleth Map</h2>
+          </div>
+          <p class="text-[.72rem] t-muted max-w-sm leading-relaxed">
+            Hover to see total aggregated statistics (2020-2022). Click a state to filter the
+            dashboard.
+          </p>
+        </div>
+
+        <div class="panel p-4 sm:p-5 relative">
+          <div class="flex items-start justify-between gap-3 mb-1">
+            <div>
+              <h3 class="font-display font-semibold text-[.95rem]" id="mapTitle">
+                Cumulative State Intensity Map
+              </h3>
+              <p id="mapSub" class="text-[.72rem] t-muted mt-0.5">Initializing map...</p>
+            </div>
+          </div>
+          <!-- Fixed container: NO zoom/pan scrolling issues -->
+          <div
+            class="chart-box mt-3"
+            style="height: 480px; width: 100%; border-radius: 8px; overflow: hidden"
+            id="chartMap"></div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+       04 · ANALYTICAL VISUALIZATIONS
+       Four Chart.js canvases. Every instance is registered in
+       ChartManager.registry and destroyed before re-creation, which is
+       what prevents the "Canvas is already in use" error on re-render.
+       ================================================================ -->
+      <section id="trends" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">04</span>Trend analysis</span>
+            <h2 class="sec-title text-xl sm:text-2xl">
+              Trajectory, geography and outcome distribution
+            </h2>
+          </div>
+          <p class="text-[.72rem] t-muted max-w-sm leading-relaxed">
+            Charts respond to the global filters above. Ranking uses the selected metric.
+          </p>
+        </div>
+
+        <div class="grid lg:grid-cols-5 gap-4">
+          <!-- Year-wise trajectory -->
+          <div class="lg:col-span-3 panel p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3 mb-1">
+              <div>
+                <h3 class="font-display font-semibold text-[.95rem]">Year-wise trajectory</h3>
+                <p id="yearTrendSub" class="text-[.72rem] t-muted mt-0.5">—</p>
+              </div>
+              <button
+                class="btn btn-xs btn-ghost no-print chart-dl"
+                data-chart="yearTrend"
+                title="Save chart as PNG">
+                <i class="fa-solid fa-download"></i>
+              </button>
+            </div>
+            <div class="chart-box h-chart mt-3"><canvas id="chartYearTrend"></canvas></div>
+          </div>
+
+          <!-- Outcome doughnut -->
+          <div class="lg:col-span-2 panel p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3 mb-1">
+              <div>
+                <h3 class="font-display font-semibold text-[.95rem]">Case outcome distribution</h3>
+                <p id="outcomeSub" class="text-[.72rem] t-muted mt-0.5">—</p>
+              </div>
+              <button
+                class="btn btn-xs btn-ghost no-print chart-dl"
+                data-chart="outcome"
+                title="Save chart as PNG">
+                <i class="fa-solid fa-download"></i>
+              </button>
+            </div>
+            <div class="chart-box h-chart mt-3"><canvas id="chartOutcome"></canvas></div>
+          </div>
+
+          <!-- State-wise impact -->
+          <div class="lg:col-span-3 panel p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3 mb-1">
+              <div>
+                <h3 id="stateImpactTitle" class="font-display font-semibold text-[.95rem]">
+                  Top 10 states by cases
+                </h3>
+                <p id="stateImpactSub" class="text-[.72rem] t-muted mt-0.5">—</p>
+              </div>
+              <button
+                class="btn btn-xs btn-ghost no-print chart-dl"
+                data-chart="stateImpact"
+                title="Save chart as PNG">
+                <i class="fa-solid fa-download"></i>
+              </button>
+            </div>
+            <div class="chart-box h-chart-tall mt-3"><canvas id="chartStateImpact"></canvas></div>
+          </div>
+
+          <!-- Vaccination distribution -->
+          <div class="lg:col-span-2 panel p-4 sm:p-5">
+            <div class="flex items-start justify-between gap-3 mb-1">
+              <div>
+                <h3 class="font-display font-semibold text-[.95rem]">Vaccination distribution</h3>
+                <p id="vaxSub" class="text-[.72rem] t-muted mt-0.5">—</p>
+              </div>
+              <div class="flex items-center gap-1.5">
+                <button
+                  id="vaxViewBtn"
+                  class="btn btn-xs btn-ghost no-print"
+                  title="Switch between yearly roll-out and state ranking">
+                  <i class="fa-solid fa-repeat"></i><span id="vaxViewLabel">By year</span>
+                </button>
+                <button
+                  class="btn btn-xs btn-ghost no-print chart-dl"
+                  data-chart="vaccination"
+                  title="Save chart as PNG">
+                  <i class="fa-solid fa-download"></i>
+                </button>
+              </div>
+            </div>
+            <div class="chart-box h-chart-tall mt-3"><canvas id="chartVaccination"></canvas></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+       05 · STATE DEEP-DIVE
+       Localised KPIs, a per-year ledger and two mini trend charts for a
+       single state. Driven by the global state filter.
+       ================================================================ -->
+      <section id="deep-dive" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">05</span>State deep-dive</span>
+            <h2 class="sec-title text-xl sm:text-2xl">One state, in full detail</h2>
+          </div>
+          <p class="text-[.72rem] t-muted max-w-sm leading-relaxed">
+            Pick a state in the filter bar, or choose any of the 36 states and UTs below.
+          </p>
+        </div>
+
+        <!-- Empty state: an invitation to act, not a shrug -->
+        <div id="deepDiveEmpty" class="panel p-6 sm:p-8 text-center">
+          <div
+            class="w-11 h-11 mx-auto mb-3 rounded-xl grid place-items-center"
+            style="background: var(--surface-3); border: 1px solid var(--line)">
+            <i class="fa-solid fa-magnifying-glass-chart" style="color: var(--accent)"></i>
+          </div>
+          <h3 class="font-display font-semibold">Select a state to open its profile</h3>
+          <p class="text-[.78rem] t-muted mt-1.5 max-w-md mx-auto">
+            You'll get its case ledger by year, fatality and recovery rates, vaccination roll-out
+            and where it ranks nationally.
+          </p>
+          <div
+            id="ddQuickPick"
+            class="flex flex-wrap justify-center gap-2 mt-4 max-h-48 overflow-y-auto p-2 scroll-y"></div>
+        </div>
+
+        <!-- Populated state profile -->
+        <div id="deepDiveContent" class="hidden">
+          <div class="panel p-4 sm:p-5">
+            <!-- Profile header -->
+            <div
+              class="flex flex-wrap items-start justify-between gap-3 pb-4 mb-4"
+              style="border-bottom: 1px solid var(--line)">
+              <div class="flex items-center gap-3">
+                <div
+                  class="w-11 h-11 rounded-xl grid place-items-center flex-none"
+                  style="
+                    background: color-mix(in srgb, var(--accent) 12%, transparent);
+                    border: 1px solid var(--line);
+                  ">
+                  <i class="fa-solid fa-location-dot" style="color: var(--accent)"></i>
+                </div>
+                <div>
+                  <h3 id="ddStateName" class="sec-title text-xl sm:text-2xl leading-tight">—</h3>
+                  <p id="ddRank" class="text-[.72rem] font-mono t-muted mt-0.5">—</p>
+                </div>
+              </div>
+              <div class="flex items-center gap-2">
+                <span
+                  id="ddScope"
+                  class="pill font-mono"
+                  style="background: var(--surface-3); color: var(--text-mid)"
+                  >All years</span
+                >
+                <button id="ddClearBtn" class="btn btn-xs">
+                  <i class="fa-solid fa-xmark"></i>Clear state
+                </button>
+              </div>
+            </div>
+
+            <!-- Localised KPI strip -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-6 gap-2.5">
+              <div class="inset px-3 py-2.5">
+                <p class="text-[.6rem] font-mono uppercase tracking-widest t-muted">Cases</p>
+                <p id="ddCases" class="figure text-lg font-bold mt-1" style="color: var(--c-cases)">
+                  0
+                </p>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <p class="text-[.6rem] font-mono uppercase tracking-widest t-muted">Active</p>
+                <p
+                  id="ddActive"
+                  class="figure text-lg font-bold mt-1"
+                  style="color: var(--c-active)">
+                  0
+                </p>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <p class="text-[.6rem] font-mono uppercase tracking-widest t-muted">Deaths</p>
+                <p
+                  id="ddDeaths"
+                  class="figure text-lg font-bold mt-1"
+                  style="color: var(--c-deaths)">
+                  0
+                </p>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <p class="text-[.6rem] font-mono uppercase tracking-widest t-muted">Recovered</p>
+                <p
+                  id="ddRecovered"
+                  class="figure text-lg font-bold mt-1"
+                  style="color: var(--c-recov)">
+                  0
+                </p>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <p class="text-[.6rem] font-mono uppercase tracking-widest t-muted">Doses</p>
+                <p id="ddVax" class="figure text-lg font-bold mt-1" style="color: var(--c-vax)">
+                  0
+                </p>
+              </div>
+              <div class="inset px-3 py-2.5">
+                <p class="text-[.6rem] font-mono uppercase tracking-widest t-muted">
+                  Share of cases
+                </p>
+                <p id="ddShare" class="figure text-lg font-bold mt-1">0%</p>
+              </div>
+            </div>
+
+            <!-- Rates + mini charts -->
+            <div class="grid lg:grid-cols-5 gap-4 mt-4">
+              <div class="lg:col-span-2 space-y-3">
+                <div class="inset p-3.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[.7rem] font-mono uppercase tracking-widest t-muted"
+                      >Death rate</span
+                    >
+                    <span id="ddDeathRate" class="figure font-bold" style="color: var(--c-deaths)"
+                      >0.00%</span
+                    >
+                  </div>
+                  <div
+                    class="h-[4px] rounded-full overflow-hidden mt-2"
+                    style="background: var(--surface-3)">
+                    <div
+                      id="ddDeathBar"
+                      class="h-full rounded-full"
+                      style="
+                        width: 0%;
+                        background: var(--c-deaths);
+                        transition: width 0.7s ease;
+                      "></div>
+                  </div>
+                  <p id="ddDeathNote" class="text-[.68rem] t-muted mt-2">—</p>
+                </div>
+                <div class="inset p-3.5">
+                  <div class="flex items-center justify-between">
+                    <span class="text-[.7rem] font-mono uppercase tracking-widest t-muted"
+                      >Recovery rate</span
+                    >
+                    <span id="ddRecoveryRate" class="figure font-bold" style="color: var(--c-recov)"
+                      >0.00%</span
+                    >
+                  </div>
+                  <div
+                    class="h-[4px] rounded-full overflow-hidden mt-2"
+                    style="background: var(--surface-3)">
+                    <div
+                      id="ddRecovBar"
+                      class="h-full rounded-full"
+                      style="
+                        width: 0%;
+                        background: var(--c-recov);
+                        transition: width 0.7s ease;
+                      "></div>
+                  </div>
+                  <p id="ddRecovNote" class="text-[.68rem] t-muted mt-2">—</p>
+                </div>
+                <div class="inset p-3.5">
+                  <p class="text-[.7rem] font-mono uppercase tracking-widest t-muted mb-2">
+                    Per-year ledger
+                  </p>
+                  <div class="scroll-x">
+                    <table class="w-full text-[.74rem]">
+                      <thead>
+                        <tr class="t-muted font-mono text-[.62rem] uppercase tracking-wider">
+                          <th class="text-left font-medium pb-1.5">Year</th>
+                          <th class="text-right font-medium pb-1.5">Cases</th>
+                          <th class="text-right font-medium pb-1.5">Deaths</th>
+                          <th class="text-right font-medium pb-1.5">Doses</th>
+                        </tr>
+                      </thead>
+                      <tbody id="ddYearTable" class="figure"></tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+
+              <div class="lg:col-span-3 grid sm:grid-cols-2 gap-4">
+                <div class="panel-flat p-3.5">
+                  <p class="text-[.7rem] font-mono uppercase tracking-widest t-muted">
+                    Case trend by year
+                  </p>
+                  <div class="chart-box h-chart-mini mt-2">
+                    <canvas id="chartMiniTrend"></canvas>
+                  </div>
+                </div>
+                <div class="panel-flat p-3.5">
+                  <p class="text-[.7rem] font-mono uppercase tracking-widest t-muted">
+                    Doses by year
+                  </p>
+                  <div class="chart-box h-chart-mini mt-2"><canvas id="chartMiniVax"></canvas></div>
+                </div>
+                <div class="sm:col-span-2 inset p-3.5">
+                  <p class="text-[.7rem] font-mono uppercase tracking-widest t-muted mb-1.5">
+                    <i class="fa-solid fa-circle-info mr-1" style="color: var(--accent)"></i>Profile
+                    summary
+                  </p>
+                  <p id="ddNarrative" class="text-[.8rem] t-mid leading-relaxed">—</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+       06 · SIDE-BY-SIDE COMPARISON
+       Two states, one matrix, one grouped bar chart. The scale toggle
+       exists because doses and deaths differ by ~3 orders of magnitude.
+       ================================================================ -->
+      <section id="comparison" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">06</span>Comparison</span>
+            <h2 class="sec-title text-xl sm:text-2xl">Put two states side by side</h2>
+          </div>
+          <p class="text-[.72rem] t-muted max-w-sm leading-relaxed">
+            Comparison respects the year filter but ignores the state filter, so you can always
+            contrast a pair.
+          </p>
+        </div>
+
+        <div class="panel p-4 sm:p-5">
+          <!-- Selectors -->
+          <div class="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-end">
+            <div>
+              <label
+                for="compareA"
+                class="block text-[.62rem] font-mono uppercase tracking-widest t-muted mb-1.5"
+                >State A</label
+              >
+              <div class="select-wrap"><select id="compareA" class="select"></select></div>
+            </div>
+            <div class="flex sm:block justify-center">
+              <button
+                id="swapCompareBtn"
+                class="btn"
+                title="Swap A and B"
+                aria-label="Swap the two selected states">
+                <i class="fa-solid fa-right-left"></i>
+              </button>
+            </div>
+            <div>
+              <label
+                for="compareB"
+                class="block text-[.62rem] font-mono uppercase tracking-widest t-muted mb-1.5"
+                >State B</label
+              >
+              <div class="select-wrap"><select id="compareB" class="select"></select></div>
+            </div>
+          </div>
+
+          <div class="grid lg:grid-cols-2 gap-4 mt-5">
+            <!-- Comparative matrix -->
+            <div class="scroll-x">
+              <table class="w-full text-[.8rem]">
+                <thead>
+                  <tr class="font-mono text-[.62rem] uppercase tracking-widest t-muted">
+                    <th class="text-left font-medium pb-2">Metric</th>
+                    <th id="matrixHeadA" class="text-right font-medium pb-2">A</th>
+                    <th id="matrixHeadB" class="text-right font-medium pb-2">B</th>
+                    <th class="text-right font-medium pb-2">Difference</th>
+                    <th class="text-right font-medium pb-2">Higher</th>
+                  </tr>
+                </thead>
+                <tbody id="compareMatrix"></tbody>
+              </table>
+            </div>
+
+            <!-- Comparative chart -->
+            <div class="panel-flat p-3.5">
+              <div class="flex items-start justify-between gap-2">
+                <p class="text-[.7rem] font-mono uppercase tracking-widest t-muted">
+                  Metric comparison
+                </p>
+                <button id="compareScaleBtn" class="btn btn-xs btn-ghost no-print">
+                  <i class="fa-solid fa-arrow-up-right-dots"></i
+                  ><span id="compareScaleLabel">Log scale</span>
+                </button>
+              </div>
+              <div class="chart-box h-chart mt-2"><canvas id="chartCompare"></canvas></div>
+              <p id="compareScaleNote" class="text-[.68rem] t-muted mt-2">
+                Logarithmic axis — vaccination doses exceed death counts by several orders of
+                magnitude.
+              </p>
+            </div>
+          </div>
+
+          <div class="inset p-3.5 mt-4">
+            <p class="text-[.7rem] font-mono uppercase tracking-widest t-muted mb-1.5">
+              <i class="fa-solid fa-scale-balanced mr-1" style="color: var(--accent)"></i>Verdict
+            </p>
+            <p id="compareVerdict" class="text-[.8rem] t-mid leading-relaxed">—</p>
+          </div>
+        </div>
+      </section>
+      <!-- ================================================================
+       07 · DETAILED DATA GRID
+       Search, sortable headers, client-side pagination and CSV export of
+       exactly what is on screen.
+       ================================================================ -->
+      <section id="data-grid" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">07</span>Record audit</span>
+            <h2 class="sec-title text-xl sm:text-2xl">Every record, with derived columns</h2>
+          </div>
+          <p id="tableSummary" class="text-[.72rem] font-mono t-muted">—</p>
+        </div>
+
+        <div class="panel overflow-hidden">
+          <!-- Toolbar -->
+          <div
+            class="p-3 sm:p-4 flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between"
+            style="border-bottom: 1px solid var(--line)">
+            <div class="relative sm:max-w-xs w-full">
+              <i
+                class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-[.75rem]"
+                style="color: var(--text-muted)"></i>
+              <input
+                id="tableSearch"
+                type="search"
+                class="input pl-9"
+                placeholder="Search by state name"
+                aria-label="Search records by state name" />
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <label
+                for="rowsPerPage"
+                class="text-[.68rem] font-mono uppercase tracking-widest t-muted"
+                >Rows</label
+              >
+              <div class="select-wrap w-[5.5rem]">
+                <select
+                  id="rowsPerPage"
+                  class="select py-2 text-[.78rem]"
+                  aria-label="Rows per page">
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+              </div>
+              <button id="exportCsvBtn" class="btn">
+                <i class="fa-solid fa-file-export"></i>Export filtered view
+              </button>
+            </div>
+          </div>
+
+          <!-- Table -->
+          <div class="scroll-x scroll-y" style="max-height: 640px">
+            <table class="grid-table" id="dataTable">
+              <thead>
+                <tr>
+                  <th data-sort="state" scope="col">
+                    State <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="year" scope="col">Year <i class="fa-solid fa-sort arrow"></i></th>
+                  <th data-sort="cases" scope="col">
+                    Total cases <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="deaths" scope="col">
+                    Deaths <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="recovered" scope="col">
+                    Recovered <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="active" scope="col">
+                    Active cases <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="vaccinated" scope="col">
+                    Vaccinations <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="recoveryRate" scope="col">
+                    Recovery rate <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                  <th data-sort="deathRate" scope="col">
+                    Death rate <i class="fa-solid fa-sort arrow"></i>
+                  </th>
+                </tr>
+              </thead>
+              <tbody id="tableBody"></tbody>
+            </table>
+            <div id="tableEmpty" class="hidden py-14 text-center">
+              <i
+                class="fa-solid fa-table-cells-large text-xl mb-2"
+                style="color: var(--text-muted)"></i>
+              <p class="font-display font-semibold text-[.9rem]">No records match this view</p>
+              <p class="text-[.76rem] t-muted mt-1">
+                Clear the search box or reset the filters to bring records back.
+              </p>
+              <button id="tableEmptyReset" class="btn btn-xs mt-3">
+                <i class="fa-solid fa-filter-circle-xmark"></i>Reset filters
+              </button>
+            </div>
+          </div>
+
+          <!-- Pagination -->
+          <div
+            class="p-3 sm:p-4 flex flex-wrap items-center justify-between gap-3"
+            style="border-top: 1px solid var(--line)">
+            <p id="pageInfo" class="text-[.72rem] font-mono t-muted">—</p>
+            <div class="flex items-center gap-1.5">
+              <button id="prevPage" class="btn btn-xs">
+                <i class="fa-solid fa-chevron-left"></i>Prev
+              </button>
+              <div id="pageNumbers" class="hidden xs:flex items-center gap-1"></div>
+              <button id="nextPage" class="btn btn-xs">
+                Next<i class="fa-solid fa-chevron-right"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ================================================================
+       08 · AUTOMATED ANALYTICAL INSIGHTS
+       Rule-based generator that reads the active slice and writes plain
+       sentences about it. No hard-coded conclusions.
+       ================================================================ -->
+      <section id="insights" class="reveal">
+        <div class="flex flex-wrap items-end justify-between gap-3 mb-4">
+          <div>
+            <span class="eyebrow mb-1.5"><span class="idx">08</span>Automated insights</span>
+            <h2 class="sec-title text-xl sm:text-2xl">What the current selection actually says</h2>
+          </div>
+          <div class="flex items-center gap-2">
+            <button id="copyInsightsBtn" class="btn btn-xs no-print">
+              <i class="fa-regular fa-clipboard"></i>Copy as text
+            </button>
+          </div>
+        </div>
+        <div id="insightsGrid" class="grid md:grid-cols-2 xl:grid-cols-3 gap-3"></div>
+      </section>
+    </main>
+
+    <!-- ================================================================
+     FOOTER — project metadata and the schema contract the ingestion
+     engine enforces.
+     ================================================================ -->
+    <footer class="mt-14" style="border-top: 1px solid var(--line); background: var(--surface)">
+      <div class="max-w-[1600px] mx-auto px-4 sm:px-6 py-8 sm:py-10">
+        <!-- Documentation accordions -->
+        <div class="space-y-3">
+          <!-- Schema specification -->
+          <div class="panel-flat overflow-hidden">
+            <button
+              id="schemaToggle"
+              class="w-full flex items-center justify-between gap-3 p-4 text-left"
+              aria-expanded="false"
+              aria-controls="schemaPanel">
+              <span class="flex items-center gap-3">
+                <span
+                  class="w-8 h-8 rounded-lg grid place-items-center flex-none"
+                  style="
+                    background: var(--surface-3);
+                    border: 1px solid var(--line);
+                    color: var(--accent);
+                  ">
+                  <i class="fa-solid fa-table-columns text-[.8rem]"></i>
+                </span>
+                <span>
+                  <span class="block font-display font-semibold text-[.9rem]"
+                    >Expected data structure</span
+                  >
+                  <span class="block text-[.72rem] t-muted"
+                    >Column names, types and the validation rules applied to each row</span
+                  >
+                </span>
+              </span>
+              <i
+                id="schemaChevron"
+                class="fa-solid fa-chevron-down text-[.75rem] t-muted transition-transform"></i>
+            </button>
+            <div id="schemaPanel" class="acc-panel">
+              <div class="px-4 pb-4 space-y-4">
+                <div class="scroll-x">
+                  <table class="w-full text-[.78rem]">
+                    <thead>
+                      <tr class="font-mono text-[.62rem] uppercase tracking-widest t-muted">
+                        <th class="text-left font-medium py-2">Column</th>
+                        <th class="text-left font-medium py-2">Type</th>
+                        <th class="text-left font-medium py-2">Required</th>
+                        <th class="text-left font-medium py-2">Rule</th>
+                        <th class="text-left font-medium py-2">Example</th>
+                      </tr>
+                    </thead>
+                    <tbody class="t-mid">
+                      <tr style="border-top: 1px solid var(--line-soft)">
+                        <td class="py-2 font-mono" style="color: var(--text)">State</td>
+                        <td class="py-2">Text</td>
+                        <td class="py-2" style="color: var(--c-deaths)">Yes</td>
+                        <td class="py-2">Non-empty; trimmed; used as the grouping key</td>
+                        <td class="py-2 font-mono t-muted">Maharashtra</td>
+                      </tr>
+                      <tr style="border-top: 1px solid var(--line-soft)">
+                        <td class="py-2 font-mono" style="color: var(--text)">Year</td>
+                        <td class="py-2">Integer</td>
+                        <td class="py-2" style="color: var(--c-deaths)">Yes</td>
+                        <td class="py-2">Four-digit year between 2000 and 2100</td>
+                        <td class="py-2 font-mono t-muted">2021</td>
+                      </tr>
+                      <tr style="border-top: 1px solid var(--line-soft)">
+                        <td class="py-2 font-mono" style="color: var(--text)">Cases</td>
+                        <td class="py-2">Number</td>
+                        <td class="py-2" style="color: var(--c-deaths)">Yes</td>
+                        <td class="py-2">Numeric, ≥ 0; commas are stripped automatically</td>
+                        <td class="py-2 font-mono t-muted">4734998</td>
+                      </tr>
+                      <tr style="border-top: 1px solid var(--line-soft)">
+                        <td class="py-2 font-mono" style="color: var(--text)">Deaths</td>
+                        <td class="py-2">Number</td>
+                        <td class="py-2" style="color: var(--c-deaths)">Yes</td>
+                        <td class="py-2">Numeric, ≥ 0; must not exceed Cases</td>
+                        <td class="py-2 font-mono t-muted">91447</td>
+                      </tr>
+                      <tr style="border-top: 1px solid var(--line-soft)">
+                        <td class="py-2 font-mono" style="color: var(--text)">Recovered</td>
+                        <td class="py-2">Number</td>
+                        <td class="py-2" style="color: var(--c-deaths)">Yes</td>
+                        <td class="py-2">Numeric, ≥ 0; Deaths + Recovered must not exceed Cases</td>
+                        <td class="py-2 font-mono t-muted">4614194</td>
+                      </tr>
+                      <tr style="border-top: 1px solid var(--line-soft)">
+                        <td class="py-2 font-mono" style="color: var(--text)">Vaccinated</td>
+                        <td class="py-2">Number</td>
+                        <td class="py-2" style="color: var(--c-deaths)">Yes</td>
+                        <td class="py-2">Numeric, ≥ 0; total doses administered</td>
+                        <td class="py-2 font-mono t-muted">125733355</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div class="grid md:grid-cols-2 gap-3">
+                  <div class="inset p-3.5">
+                    <p class="text-[.68rem] font-mono uppercase tracking-widest t-muted mb-2">
+                      Accepted header aliases
+                    </p>
+                    <p class="text-[.76rem] t-mid leading-relaxed">
+                      Headers are matched case-insensitively and ignore spaces, underscores and
+                      hyphens.
+                      <span class="font-mono t-muted">State/State_Name/Region/UT</span>,
+                      <span class="font-mono t-muted">Year/Yr</span>,
+                      <span class="font-mono t-muted">Cases/Confirmed/Total Cases/Positive</span>,
+                      <span class="font-mono t-muted">Deaths/Deceased/Fatalities</span>,
+                      <span class="font-mono t-muted">Recovered/Cured/Discharged</span> and
+                      <span class="font-mono t-muted">Vaccinated/Vaccinations/Doses</span> all
+                      resolve correctly.
+                    </p>
+                  </div>
+                  <div class="inset p-3.5">
+                    <p class="text-[.68rem] font-mono uppercase tracking-widest t-muted mb-2">
+                      Sample CSV
+                    </p>
+                    <pre class="text-[.7rem] font-mono t-mid leading-relaxed overflow-x-auto">
+State,Year,Cases,Deaths,Recovered,Vaccinated
+Maharashtra,2020,1963138,48578,1905726,0
+Maharashtra,2021,4734998,91447,4614194,125733355
+Kerala,2021,4356711,42850,4286849,43384280</pre
+                    >
+                    <button id="downloadTemplateBtn2" class="btn btn-xs mt-3">
+                      <i class="fa-solid fa-download"></i>Download this template
+                    </button>
+                  </div>
+                </div>
+                <p class="text-[.74rem] t-muted leading-relaxed">
+                  <i class="fa-solid fa-circle-info mr-1" style="color: var(--accent)"></i>
+                  One row = one state in one calendar year, holding that year's reported figures.
+                  Rows failing a hard rule are rejected and listed in the validation report; rows
+                  with soft warnings are kept and flagged.
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Derived formulas + module map -->
+          <div class="panel-flat overflow-hidden">
+            <button
+              id="formulaToggle"
+              class="w-full flex items-center justify-between gap-3 p-4 text-left"
+              aria-expanded="false"
+              aria-controls="formulaPanel">
+              <span class="flex items-center gap-3">
+                <span
+                  class="w-8 h-8 rounded-lg grid place-items-center flex-none"
+                  style="
+                    background: var(--surface-3);
+                    border: 1px solid var(--line);
+                    color: var(--accent);
+                  ">
+                  <i class="fa-solid fa-square-root-variable text-[.8rem]"></i>
+                </span>
+                <span>
+                  <span class="block font-display font-semibold text-[.9rem]"
+                    >Derived metrics &amp; module map</span
+                  >
+                  <span class="block text-[.72rem] t-muted"
+                    >The formulas behind every computed column, and which module owns what</span
+                  >
+                </span>
+              </span>
+              <i
+                id="formulaChevron"
+                class="fa-solid fa-chevron-down text-[.75rem] t-muted transition-transform"></i>
+            </button>
+            <div id="formulaPanel" class="acc-panel">
+              <div class="px-4 pb-4 grid md:grid-cols-2 gap-3">
+                <div class="inset p-3.5">
+                  <p class="text-[.68rem] font-mono uppercase tracking-widest t-muted mb-2">
+                    Auto-calculated fields
+                  </p>
+                  <ul class="space-y-2 text-[.78rem] t-mid">
+                    <li>
+                      <span class="font-mono" style="color: var(--c-active)">Active</span> = Cases −
+                      Deaths − Recovered
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--c-deaths)">Death rate %</span> =
+                      (Deaths ÷ Cases) × 100, to 2 dp
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--c-recov)">Recovery rate %</span> =
+                      (Recovered ÷ Cases) × 100, to 2 dp
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--c-vax)"
+                        >Doses per confirmed case</span
+                      >
+                      = Vaccinated ÷ Cases
+                    </li>
+                    <li>
+                      <span class="font-mono">Share of cases %</span> = state cases ÷ total cases in
+                      view × 100
+                    </li>
+                    <li>
+                      <span class="font-mono">Roll-out growth %</span> = (doses<sub>2022</sub> −
+                      doses<sub>2021</sub>) ÷ doses<sub>2021</sub> × 100
+                    </li>
+                  </ul>
+                  <p class="text-[.72rem] t-muted mt-3">
+                    Division guards return 0 rather than NaN or Infinity when a denominator is 0.
+                  </p>
+                </div>
+                <div class="inset p-3.5">
+                  <p class="text-[.68rem] font-mono uppercase tracking-widest t-muted mb-2">
+                    JavaScript modules
+                  </p>
+                  <ul class="space-y-2 text-[.78rem] t-mid">
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">App.state</span> — single
+                      source of truth: dataset, filters, table state, theme
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">Parser</span> — SheetJS
+                      read, header aliasing, type coercion
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">Validator</span> — hard
+                      errors vs soft warnings, status report
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">Calc</span> — derived
+                      rows, aggregation, grouping, ranking
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">ChartManager</span> —
+                      registry, destroy-before-render, theme sync
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">TableManager</span> —
+                      search, sort, paginate, CSV export
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">Insights</span> —
+                      rule-based narrative generation
+                    </li>
+                    <li>
+                      <span class="font-mono" style="color: var(--accent)">App.render()</span> — one
+                      call re-paints every module
+                    </li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project metadata -->
+        <div
+          class="grid sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-8 pt-8"
+          style="border-top: 1px solid var(--line)">
+          <!-- EDIT THESE FOUR BLOCKS WITH YOUR OWN SUBMISSION DETAILS -->
+          <div>
+            <p class="text-[.62rem] font-mono uppercase tracking-widest t-muted mb-2">Project</p>
+            <p class="font-display font-semibold text-[.86rem] leading-snug">
+              COVID-19 Data Visualization Dashboard
+            </p>
+            <p class="text-[.74rem] t-muted mt-1.5">Minor Project · Front-end Data Visualization</p>
+          </div>
+          <div>
+            <p class="text-[.62rem] font-mono uppercase tracking-widest t-muted mb-2">Created by</p>
+            <p class="text-[.86rem] font-semibold">Aziz Taheribhai Chharchhodawala</p>
+            <p class="text-[.74rem] t-muted mt-1">24S01BCA0004</p>
+          </div>
+          <div>
+            <p class="text-[.62rem] font-mono uppercase tracking-widest t-muted mb-2">
+              Contributed By
+            </p>
+            <p class="text-[.86rem] font-semibold">Bhavin Suryavanshi</p>
+            <p class="text-[.74rem] t-muted mt-1">24S01BCA0039</p>
+            <br />
+            <p class="text-[.86rem] font-semibold">Chirag Dodiya</p>
+            <p class="text-[.74rem] t-muted">24S01BCA0034</p>
+          </div>
+          <div>
+            <p class="text-[.62rem] font-mono uppercase tracking-widest t-muted mb-2">Built with</p>
+            <div class="flex flex-wrap gap-1.5">
+              <span
+                class="pill font-mono"
+                style="background: var(--surface-3); color: var(--text-mid)"
+                >HTML5</span
+              >
+              <span
+                class="pill font-mono"
+                style="background: var(--surface-3); color: var(--text-mid)"
+                >Tailwind CSS</span
+              >
+              <span
+                class="pill font-mono"
+                style="background: var(--surface-3); color: var(--text-mid)"
+                >Chart.js</span
+              >
+              <span
+                class="pill font-mono"
+                style="background: var(--surface-3); color: var(--text-mid)"
+                >Highcharts Maps</span
+              >
+              <span
+                class="pill font-mono"
+                style="background: var(--surface-3); color: var(--text-mid)"
+                >SheetJS</span
+              >
+              <span
+                class="pill font-mono"
+                style="background: var(--surface-3); color: var(--text-mid)"
+                >Vanilla JS</span
+              >
+            </div>
+            <p class="text-[.72rem] t-muted mt-3">
+              Runs fully client-side from a single <span class="font-mono">index.html</span> file.
+            </p>
+          </div>
+        </div>
+
+        <div
+          class="flex flex-wrap items-center justify-between gap-3 mt-8 pt-5 text-[.72rem] t-muted"
+          style="border-top: 1px solid var(--line)">
+          <p>
+            Minor Project Submission · <span id="yearNow">2026</span>. Datasets reflect official
+            2020–2022 state reporting and are strictly for technical demonstration, not clinical or
+            policy guidance.
+          </p>
+          <a href="#upload" class="btn btn-xs no-print"
+            ><i class="fa-solid fa-arrow-up"></i>Back to top</a
+          >
+        </div>
+      </div>
+    </footer>
+
+    <!-- Toast host -->
+    <div id="toastHost" aria-live="polite" aria-atomic="false"></div>
+
+    <!-- External  -->
+    <script src="./src/js/engine.js"></script>
+    <script src="./src/js/chart.js"></script>
+    <script src="./src/js/events.js"></script>
+  </body>
+</html>
