@@ -363,7 +363,9 @@
   }
 
   function init() {
-    App.setTheme(App.store.get('covid-dashboard-theme') === 'light' ? 'light' : 'dark', {
+    // Check local storage, default to 'light' if nothing is saved
+    const userTheme = App.store.get('covid-dashboard-theme');
+    App.setTheme(userTheme ? userTheme : 'light', {
       silent: true,
     });
     App.setText('yearNow', String(new Date().getFullYear()));
