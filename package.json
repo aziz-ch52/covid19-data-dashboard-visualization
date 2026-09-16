@@ -18,7 +18,6 @@
     "dashboard"
   ],
   "author": "Aziz Chharchhodawala",
-  "license": "MIT",
   "dependencies": {
     "xlsx": "^0.18.5"
   },
