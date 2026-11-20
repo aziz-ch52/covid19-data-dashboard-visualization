@@ -1287,6 +1287,99 @@
     return sign + fmtInt(abs);
   }
 
+  /* ---- Compare chart safety net: detect a blank canvas and show an HTML fallback ---- */
+  function clearCompareFallback() {
+    const fb = $('compareFallback');
+    if (fb) fb.remove();
+    const cv = $('chartCompare');
+    if (cv) cv.style.visibility = '';
+  }
+
+  function canvasLooksBlank(cv) {
+    try {
+      if (!cv || !cv.clientWidth || !cv.clientHeight || !cv.width || !cv.height) return true;
+      const d = cv.getContext('2d').getImageData(0, 0, cv.width, cv.height).data;
+      const r0 = d[0],
+        g0 = d[1],
+        b0 = d[2];
+      let diff = 0;
+      for (let i = 0; i < d.length; i += 16) {
+        if (Math.abs(d[i] - r0) + Math.abs(d[i + 1] - g0) + Math.abs(d[i + 2] - b0) > 60) {
+          diff++;
+          if (diff > 40) return false;
+        }
+      }
+      return true;
+    } catch (e) {
+      return false; // cannot inspect -> assume it is fine
+    }
+  }
+
+  function showCompareFallback(reason, A, B, keys, labels, useLog, cA, cB) {
+    const cv = $('chartCompare');
+    if (!cv || !cv.parentElement) return;
+    cv.style.visibility = 'hidden';
+    let fb = $('compareFallback');
+    if (!fb) {
+      fb = document.createElement('div');
+      fb.id = 'compareFallback';
+      fb.style.cssText = 'position:absolute;inset:0;overflow:auto;padding:2px 4px;font-size:11px;';
+      cv.parentElement.appendChild(fb);
+    }
+    const all = [];
+    keys.forEach(function (k) {
+      all.push(Number(A[k]) || 0, Number(B[k]) || 0);
+    });
+    const max = Math.max.apply(null, all.concat([10]));
+    const width = function (v) {
+      if (v <= 0) return 0;
+      const pct = useLog ? (Math.log10(v) / Math.log10(max)) * 100 : (v / max) * 100;
+      return Math.max(2, Math.min(100, pct));
+    };
+    const bar = function (name, v, color) {
+      return (
+        '<div style="display:flex;align-items:center;gap:6px;margin:2px 0">' +
+        '<div style="flex:1;background:rgba(127,127,127,.12);border-radius:4px;height:12px">' +
+        '<div style="width:' +
+        width(v).toFixed(1) +
+        '%;height:12px;border-radius:4px;background:' +
+        color +
+        '"></div></div>' +
+        '<span style="min-width:96px;text-align:right;font-family:JetBrains Mono,monospace;font-size:10px">' +
+        fmtInt(v) +
+        '</span></div>'
+      );
+    };
+    let html =
+      '<div style="display:flex;gap:14px;margin-bottom:6px;font-size:11px">' +
+      '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' +
+      cA +
+      '"></span> ' +
+      escapeHtml(state.compare.a) +
+      '</span>' +
+      '<span><span style="display:inline-block;width:9px;height:9px;border-radius:2px;background:' +
+      cB +
+      '"></span> ' +
+      escapeHtml(state.compare.b) +
+      '</span></div>';
+    keys.forEach(function (k, i) {
+      html +=
+        '<div style="margin-bottom:6px"><div style="font-weight:600;margin-bottom:1px">' +
+        labels[i] +
+        '</div>' +
+        bar(state.compare.a, Number(A[k]) || 0, cA) +
+        bar(state.compare.b, Number(B[k]) || 0, cB) +
+        '</div>';
+    });
+    html +=
+      '<div style="opacity:.6;font-size:10px;margin-top:4px">Simplified view (' +
+      (useLog ? 'log' : 'linear') +
+      ' scale). Canvas chart did not draw: ' +
+      escapeHtml(reason) +
+      '</div>';
+    fb.innerHTML = html;
+  }
+
   function renderComparison() {
     const scope = Calc.yearScope();
     const states = Calc.uniqueStates(scope);
@@ -1308,6 +1401,7 @@
     if (selA) selA.value = state.compare.a;
     if (selB) selB.value = state.compare.b;
 
+    clearCompareFallback();
     const A = Calc.stateTotal(scope, state.compare.a);
     const B = Calc.stateTotal(scope, state.compare.b);
     setText('matrixHeadA', state.compare.a);
@@ -1393,72 +1487,137 @@
     const labels = ['Cases', 'Active', 'Deaths', 'Recovered', 'Doses'];
     const prep = function (src) {
       return keys.map(function (k) {
-        const v = src[k] || 0;
+        const v = Number(src[k]) || 0;
         return useLog && v <= 0 ? null : v;
       });
     };
-    const cA = cssVar('--accent'),
-      cB = metricColor('deaths');
 
-    ChartManager.render('compare', {
-      type: 'bar',
-      data: {
-        labels: labels,
-        datasets: [
-          {
-            label: state.compare.a,
-            data: prep(A),
-            backgroundColor: withAlpha(cA, 0.85),
-            hoverBackgroundColor: cA,
-            borderRadius: 5,
-            borderSkipped: false,
-            maxBarThickness: 30,
-          },
-          {
-            label: state.compare.b,
-            data: prep(B),
-            backgroundColor: withAlpha(cB, 0.8),
-            hoverBackgroundColor: cB,
-            borderRadius: 5,
-            borderSkipped: false,
-            maxBarThickness: 30,
-          },
-        ],
-      },
-      options: {
-        plugins: {
-          legend: { position: 'top', align: 'end' },
-          tooltip: ChartManager.tooltip({
-            callbacks: {
-              label: function (ctx) {
-                return (
-                  '  ' +
-                  ctx.dataset.label +
-                  ': ' +
-                  (ctx.parsed.y === null ? '0' : fmtInt(ctx.parsed.y))
-                );
-              },
+    // Explicit log-axis bounds (powers of 10) so we never depend on Chart.js auto-bounds.
+    const positives = [];
+    [A, B].forEach(function (src) {
+      keys.forEach(function (k) {
+        const v = Number(src[k]) || 0;
+        if (v > 0) positives.push(v);
+      });
+    });
+    if (useLog && !positives.length) {
+      // Nothing positive to plot on a log axis -> fall back to linear instead of a blank chart.
+      state.compare.logScale = false;
+      return renderComparison();
+    }
+    let yScale = { beginAtZero: true };
+    if (useLog) {
+      const lo = Math.pow(10, Math.floor(Math.log10(Math.min.apply(null, positives))));
+      let hi = Math.pow(10, Math.ceil(Math.log10(Math.max.apply(null, positives))));
+      if (hi <= lo) hi = lo * 10;
+      yScale = { type: 'logarithmic', min: lo, max: hi };
+    }
+
+    const cA = cssVar('--accent') || '#0e7490',
+      cB = metricColor('deaths') || '#e11d48';
+
+    let chart = null;
+    try {
+      chart = ChartManager.render('compare', {
+        type: 'bar',
+        data: {
+          labels: labels,
+          datasets: [
+            {
+              label: state.compare.a,
+              data: prep(A),
+              backgroundColor: withAlpha(cA, 0.85),
+              hoverBackgroundColor: cA,
+              borderRadius: 5,
+              borderSkipped: false,
+              maxBarThickness: 30,
             },
-          }),
+            {
+              label: state.compare.b,
+              data: prep(B),
+              backgroundColor: withAlpha(cB, 0.8),
+              hoverBackgroundColor: cB,
+              borderRadius: 5,
+              borderSkipped: false,
+              maxBarThickness: 30,
+            },
+          ],
         },
-        scales: {
-          x: ChartManager.axis({
-            grid: false,
-            ticks: { font: { family: "'Inter', sans-serif", size: 11, weight: '500' } },
-          }),
-          y: Object.assign(
-            ChartManager.axis({
-              ticks: {
-                callback: function (v) {
-                  return fmtCompact(v);
+        options: {
+          plugins: {
+            legend: { position: 'top', align: 'end' },
+            tooltip: ChartManager.tooltip({
+              callbacks: {
+                label: function (ctx) {
+                  return (
+                    '  ' +
+                    ctx.dataset.label +
+                    ': ' +
+                    (ctx.parsed.y === null ? '0' : fmtInt(ctx.parsed.y))
+                  );
                 },
               },
             }),
-            useLog ? { type: 'logarithmic' } : { beginAtZero: true },
-          ),
+          },
+          scales: {
+            x: ChartManager.axis({
+              grid: false,
+              ticks: { font: { family: "'Inter', sans-serif", size: 11, weight: '500' } },
+            }),
+            y: Object.assign(
+              ChartManager.axis({
+                ticks: {
+                  callback: function (v) {
+                    return fmtCompact(v);
+                  },
+                },
+              }),
+              yScale,
+            ),
+          },
         },
+      });
+    } catch (err) {
+      console.error('[compare chart] render failed:', err);
+      if (useLog) {
+        // Log axis failed on this browser -> retry once on a linear axis.
+        state.compare.logScale = false;
+        return renderComparison();
+      }
+    }
+
+    // The chart can be created while the panel is still being laid out (reveal animation,
+    // web-font swap). Force one re-measure once the layout has settled.
+    if (chart) {
+      const remeasure = function () {
+        try {
+          chart.resize();
+        } catch (e) {}
+      };
+      requestAnimationFrame(remeasure);
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(remeasure);
+      setTimeout(remeasure, 400);
+    }
+
+    // Safety net: after the animation has finished, confirm something was actually drawn.
+    // If not, show readable HTML bars plus the reason, instead of an empty panel.
+    const cv = $('chartCompare');
+    const failReason = !chart ? 'Chart.js threw an error (see console)' : null;
+    setTimeout(
+      function () {
+        if (ChartManager.registry.compare !== chart && chart) return; // a newer render took over
+        const reason =
+          failReason ||
+          (canvasLooksBlank(cv)
+            ? 'canvas ' +
+              (cv ? cv.clientWidth + 'x' + cv.clientHeight : 'missing') +
+              ', Chart.js ' +
+              (typeof Chart !== 'undefined' ? Chart.version : 'not loaded')
+            : null);
+        if (reason) showCompareFallback(reason, A, B, keys, labels, useLog, cA, cB);
       },
-    });
+      chart ? 1100 : 0,
+    );
   }
 
   /* ==================================================================
